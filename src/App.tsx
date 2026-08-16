@@ -5,13 +5,13 @@ import L from 'leaflet';
 
 // --- CONFIGURACIÓN DE ICONOS ---
 const iconMototaxi = new L.Icon({
-  iconUrl: '/mototaxi_icon.png', // Ícono de Tuk-Tuk / Mototaxi
+  iconUrl: '/logo.png', // Ícono de Tuk-Tuk / Mototaxi
   iconSize: [45, 45],
   iconAnchor: [22, 22]
 });
 
 const iconDestino = new L.Icon({
-  iconUrl: 'map-pin.png', // Pin rojo clásico
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149059.png', // Pin rojo clásico
   iconSize: [40, 40],
   iconAnchor: [20, 40]
 });
