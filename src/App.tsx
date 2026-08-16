@@ -5,13 +5,13 @@ import L from 'leaflet';
 
 // --- CONFIGURACIÓN DE ICONOS ---
 const iconMototaxi = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/2163/2163350.png', // Ícono de Tuk-Tuk / Mototaxi
+  iconUrl: '/mototaxi_icon.png', // Ícono de Tuk-Tuk / Mototaxi
   iconSize: [45, 45],
   iconAnchor: [22, 22]
 });
 
 const iconDestino = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149059.png', // Pin rojo clásico
+  iconUrl: 'map-pin.png', // Pin rojo clásico
   iconSize: [40, 40],
   iconAnchor: [20, 40]
 });
@@ -57,12 +57,17 @@ export default function App() {
         .single();
 
       if (error || !data) {
-        setError('Viaje no encontrado o ya ha finalizado.');
+        setError('Viaje no encontrado.');
+        return;
+      }
+      
+      // 🚨 LA MAGIA DE LA CADUCIDAD 🚨
+      if (data.estado === 'completado' || data.estado === 'cancelado') {
+        setError('Este viaje ya ha finalizado. ¡Llegó a su destino a salvo!');
         return;
       }
       
       setViaje(data);
-      // Ubicación inicial (Origen del viaje)
       setUbicacionConductor({ lat: data.origen_lat, lng: data.origen_lng });
     };
 
