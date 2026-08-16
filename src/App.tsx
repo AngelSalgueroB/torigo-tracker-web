@@ -6,14 +6,14 @@ import L from 'leaflet';
 // --- CONFIGURACIÓN DE ICONOS ---
 const iconMototaxi = new L.Icon({
   iconUrl: '/logo.png', // Ícono de Tuk-Tuk / Mototaxi
-  iconSize: [45, 45],
-  iconAnchor: [22, 22]
+  iconSize: [28, 28], // Tamaño mucho más discreto y profesional
+  iconAnchor: [14, 14] // El centro exacto de la imagen (28 ÷ 2)
 });
 
 const iconDestino = new L.Icon({
   iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149059.png', // Pin rojo clásico
-  iconSize: [40, 40],
-  iconAnchor: [20, 40]
+  iconSize: [24, 24], // Un poco más pequeño que el vehículo
+  iconAnchor: [12, 24] // Centro en el eje X (12), y la punta inferior en el eje Y (24)
 });
 
 // --- 🚨 REEMPLAZA ESTO CON TUS CREDENCIALES DE SUPABASE 🚨 ---
