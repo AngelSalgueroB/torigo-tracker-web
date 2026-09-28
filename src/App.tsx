@@ -28,7 +28,8 @@ const iconDestino = new L.Icon({
 const MapUpdater = ({ ubicacion }: { ubicacion: { lat: number, lng: number } }) => {
   const map = useMap();
   useEffect(() => {
-    map.flyTo([ubicacion.lat, ubicacion.lng], map.getZoom(), { animate: true, duration: 1.5 });
+    // Usamos panTo en lugar de flyTo para no trabar el mapa con animaciones largas
+    map.panTo([ubicacion.lat, ubicacion.lng], { animate: true, duration: 0.5 });
   }, [ubicacion, map]);
   return null;
 };
@@ -86,16 +87,22 @@ export default function App() {
   useEffect(() => {
     if (!viajeId) return;
 
+    console.log("Conectando al canal GPS:", `gps_${viajeId}`);
+
     const canalGps = supabase.channel(`gps_${viajeId}`)
       .on('broadcast', { event: 'gps_mototaxi' }, (payload) => {
+        console.log("📡 Nuevo GPS del Conductor recibido:", payload.payload);
         setUbicacionConductor({
           lat: payload.payload.lat,
           lng: payload.payload.lng
         });
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Estado del canal Realtime:", status);
+      });
 
     return () => {
+      console.log("🔌 Desconectando del canal GPS...");
       supabase.removeChannel(canalGps);
     };
   }, [viajeId]);
