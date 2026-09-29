@@ -28,7 +28,7 @@ const iconDestino = new L.Icon({
 const MapUpdater = ({ ubicacion }: { ubicacion: { lat: number, lng: number } }) => {
   const map = useMap();
   useEffect(() => {
-    // Usamos panTo en lugar de flyTo para no trabar el mapa con animaciones largas
+    // panTo es mucho más ligero que flyTo para no trabar el mapa con animaciones largas
     map.panTo([ubicacion.lat, ubicacion.lng], { animate: true, duration: 0.5 });
   }, [ubicacion, map]);
   return null;
@@ -39,6 +39,7 @@ export default function App() {
   const [viaje, setViaje] = useState<any>(null);
   const [ubicacionConductor, setUbicacionConductor] = useState<{ lat: number, lng: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ultimaSenial, setUltimaSenial] = useState<Date | null>(null); 
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -87,7 +88,7 @@ export default function App() {
   useEffect(() => {
     if (!viajeId) return;
 
-    console.log("Conectando al canal GPS:", `gps_${viajeId}`);
+    console.log("🌐 Conectando al canal GPS:", `gps_${viajeId}`);
 
     const canalGps = supabase.channel(`gps_${viajeId}`)
       .on('broadcast', { event: 'gps_mototaxi' }, (payload) => {
@@ -96,9 +97,10 @@ export default function App() {
           lat: payload.payload.lat,
           lng: payload.payload.lng
         });
+        setUltimaSenial(new Date());
       })
       .subscribe((status) => {
-        console.log("Estado del canal Realtime:", status);
+        console.log("⚡ Estado del canal Realtime:", status);
       });
 
     return () => {
@@ -106,15 +108,6 @@ export default function App() {
       supabase.removeChannel(canalGps);
     };
   }, [viajeId]);
-
-  const formatearFecha = (fechaISO: string) => {
-    if (!fechaISO) return '---';
-    const fecha = new Date(fechaISO);
-    return fecha.toLocaleString('es-PE', { 
-      day: '2-digit', month: 'short',
-      hour: '2-digit', minute: '2-digit', hour12: true 
-    });
-  };
 
   if (error) {
     return (
@@ -137,64 +130,54 @@ export default function App() {
   return (
     <div className="relative h-screen w-full bg-[#0a0a0a] flex flex-col font-sans overflow-hidden">
       
-      {/* 🚨 PANEL RESPONSIVO: Abajo en Móvil, Arriba a la Izquierda en PC */}
-      <div className="absolute bottom-4 left-4 right-4 md:top-6 md:bottom-auto md:left-6 md:right-auto md:w-[340px] z-[1000] pointer-events-none transition-all duration-300">
-        <div className="bg-[#111111]/95 backdrop-blur-xl border border-gray-800/80 rounded-2xl p-4 shadow-2xl pointer-events-auto">
+      {/* 🚨 PANEL REDISEÑADO: Posicionado Arriba, más delgado y compacto */}
+      <div className="absolute top-4 left-4 right-4 md:left-6 md:right-auto md:w-[320px] z-[1000] pointer-events-none transition-all duration-300">
+        <div className="bg-[#111111]/95 backdrop-blur-xl border border-gray-800/80 rounded-xl p-3 shadow-2xl pointer-events-auto">
           
           {/* Cabecera */}
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-xl font-black text-white tracking-tight">
-              Tori<span className="bg-red-600 text-white px-1.5 py-0.5 rounded ml-0.5">Go!</span>
+          <div className="flex justify-between items-center mb-2.5">
+            <h1 className="text-lg font-black text-white tracking-tight">
+              Tori<span className="bg-red-600 text-white px-1 rounded ml-0.5">Go!</span>
             </h1>
-            <span className="bg-green-500/10 text-green-400 text-[10px] uppercase font-bold px-2 py-1 rounded-full border border-green-500/20 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-              En Vivo
-            </span>
-          </div>
-
-          {/* Grid Compacto de Datos */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div>
-              <p className="text-gray-500 text-[9px] uppercase font-bold tracking-widest mb-0.5">Pasajero</p>
-              <p className="text-white font-medium text-sm truncate">{viaje.pasajero_nombre}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-[9px] uppercase font-bold tracking-widest mb-0.5">Conductor</p>
-              <p className="text-white font-medium text-sm truncate">
-                {viaje.perfil_conductor?.nombre_completo || 'Asignando...'}
-              </p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-[9px] uppercase font-bold tracking-widest mb-0.5">Placa</p>
-              {viaje.perfil_conductor?.vehiculo_placa ? (
-                <span className="bg-[#facc15] text-black font-bold text-[11px] px-1.5 py-0.5 rounded shadow-sm border border-yellow-400 inline-block mt-0.5">
-                  {viaje.perfil_conductor.vehiculo_placa}
+            <div className="flex flex-col items-end">
+              <span className="bg-green-500/10 text-green-400 text-[9px] uppercase font-bold px-2 py-0.5 rounded-full border border-green-500/20 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                En Vivo
+              </span>
+              {ultimaSenial && (
+                <span className="text-[8.5px] text-gray-400 mt-0.5 font-medium tracking-wider">
+                  ⏱ {ultimaSenial.toLocaleTimeString()}
                 </span>
-              ) : (
-                <span className="text-gray-500 text-xs">--</span>
               )}
             </div>
-            <div>
-              <p className="text-gray-500 text-[9px] uppercase font-bold tracking-widest mb-0.5">Hora de inicio</p>
-              <p className="text-gray-300 text-xs mt-0.5">{formatearFecha(viaje.created_at)}</p>
-            </div>
           </div>
 
-          {/* Caja de Rutas */}
-          <div className="bg-[#1a1a1c] rounded-xl p-3 border border-gray-800/60">
-            <div className="flex items-start gap-2.5 mb-2.5">
-              <div className="w-2 h-2 rounded-full bg-green-500 mt-1 shrink-0 shadow-[0_0_8px_rgba(34,197,94,0.4)]"></div>
-              <div className="flex-1 min-w-0">
-                <p className="text-gray-500 text-[9px] uppercase font-bold tracking-widest mb-0.5">Punto de Recojo</p>
-                <p className="text-gray-200 text-[11px] leading-tight truncate">{viaje.origen_direccion}</p>
-              </div>
+          {/* Caja Compacta del Conductor */}
+          <div className="flex justify-between items-center bg-[#1a1a1c] p-2 rounded-lg border border-gray-800/60 mb-2.5">
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-[8px] uppercase font-bold tracking-widest mb-0.5">Conductor</span>
+              <span className="text-white text-xs font-bold truncate max-w-[160px]">
+                {viaje.perfil_conductor?.nombre_completo || 'Asignando...'}
+              </span>
             </div>
-            <div className="flex items-start gap-2.5">
-              <div className="w-2 h-2 rounded-full bg-red-500 mt-1 shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.4)]"></div>
-              <div className="flex-1 min-w-0">
-                <p className="text-gray-500 text-[9px] uppercase font-bold tracking-widest mb-0.5">Destino</p>
-                <p className="text-white font-medium text-xs leading-tight truncate">{viaje.destino_direccion}</p>
+            {viaje.perfil_conductor?.vehiculo_placa ? (
+              <div className="bg-[#facc15] text-black font-black text-[10px] px-1.5 py-0.5 rounded shadow-sm border border-yellow-400">
+                {viaje.perfil_conductor.vehiculo_placa}
               </div>
+            ) : (
+              <span className="text-gray-600 text-xs font-bold">--</span>
+            )}
+          </div>
+
+          {/* Rutas Minimalistas */}
+          <div className="pl-1 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]"></div>
+              <p className="text-gray-300 text-[10px] truncate leading-none">{viaje.origen_direccion}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]"></div>
+              <p className="text-white font-medium text-[10px] truncate leading-none">{viaje.destino_direccion}</p>
             </div>
           </div>
 
@@ -217,7 +200,12 @@ export default function App() {
           <Marker position={[viaje.destino_lat, viaje.destino_lng]} icon={iconDestino}>
             <Popup className="font-bold">Destino Final</Popup>
           </Marker>
-          <Marker position={[ubicacionConductor.lat, ubicacionConductor.lng]} icon={iconMototaxi}>
+          {/* 🚨 KEY DINÁMICO: Obliga a React Leaflet a forzar la actualización visual del TukTuk */}
+          <Marker 
+            key={`tuk-${ubicacionConductor.lat}-${ubicacionConductor.lng}`}
+            position={[ubicacionConductor.lat, ubicacionConductor.lng]} 
+            icon={iconMototaxi}
+          >
             <Popup className="font-bold text-center">¡Aquí va {viaje.pasajero_nombre}!</Popup>
           </Marker>
         </MapContainer>
