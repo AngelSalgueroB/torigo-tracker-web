@@ -85,26 +85,24 @@ export default function App() {
     cargarViaje();
   }, []);
 
+  // 1. Reemplazamos la configuración del useEffect del canal GPS
   useEffect(() => {
     if (!viajeId) return;
 
-    console.log("🌐 Conectando al canal GPS:", `gps_${viajeId}`);
-
-    const canalGps = supabase.channel(`gps_${viajeId}`)
+    // Le decimos a Supabase explícitamente que este canal recibe Broadcasts
+    const canalGps = supabase.channel(`gps_${viajeId}`, {
+      config: { broadcast: { ack: false } }
+    })
       .on('broadcast', { event: 'gps_mototaxi' }, (payload) => {
-        console.log("📡 Nuevo GPS del Conductor recibido:", payload.payload);
         setUbicacionConductor({
           lat: payload.payload.lat,
           lng: payload.payload.lng
         });
         setUltimaSenial(new Date());
       })
-      .subscribe((status) => {
-        console.log("⚡ Estado del canal Realtime:", status);
-      });
+      .subscribe();
 
     return () => {
-      console.log("🔌 Desconectando del canal GPS...");
       supabase.removeChannel(canalGps);
     };
   }, [viajeId]);
@@ -130,7 +128,7 @@ export default function App() {
   return (
     <div className="relative h-screen w-full bg-[#0a0a0a] flex flex-col font-sans overflow-hidden">
       
-      {/* 🚨 PANEL REDISEÑADO: Posicionado Arriba, más delgado y compacto */}
+      {/*PANEL REDISEÑADO: Posicionado Arriba, más delgado y compacto */}
       <div className="absolute top-4 left-4 right-4 md:left-6 md:right-auto md:w-[320px] z-[1000] pointer-events-none transition-all duration-300">
         <div className="bg-[#111111]/95 backdrop-blur-xl border border-gray-800/80 rounded-xl p-3 shadow-2xl pointer-events-auto">
           
@@ -200,9 +198,8 @@ export default function App() {
           <Marker position={[viaje.destino_lat, viaje.destino_lng]} icon={iconDestino}>
             <Popup className="font-bold">Destino Final</Popup>
           </Marker>
-          {/* 🚨 KEY DINÁMICO: Obliga a React Leaflet a forzar la actualización visual del TukTuk */}
+          {/*KEY DINÁMICO: Obliga a React Leaflet a forzar la actualización visual del TukTuk */}
           <Marker 
-            key={`tuk-${ubicacionConductor.lat}-${ubicacionConductor.lng}`}
             position={[ubicacionConductor.lat, ubicacionConductor.lng]} 
             icon={iconMototaxi}
           >
