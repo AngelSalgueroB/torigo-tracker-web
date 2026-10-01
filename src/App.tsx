@@ -28,7 +28,6 @@ const iconDestino = new L.Icon({
 const MapUpdater = ({ ubicacion }: { ubicacion: { lat: number, lng: number } }) => {
   const map = useMap();
   useEffect(() => {
-    // panTo es mucho más ligero que flyTo para no trabar el mapa con animaciones largas
     map.panTo([ubicacion.lat, ubicacion.lng], { animate: true, duration: 0.5 });
   }, [ubicacion, map]);
   return null;
@@ -79,28 +78,54 @@ export default function App() {
       }
       
       setViaje({ ...dataViaje, perfil_conductor: perfilConductor });
-      setUbicacionConductor({ lat: dataViaje.origen_lat, lng: dataViaje.origen_lng });
+      
+      // Si el conductor ya transmitió alguna coordenada previa a la base de datos, la usamos
+      const latInicial = dataViaje.conductor_lat || dataViaje.origen_lat;
+      const lngInicial = dataViaje.conductor_lng || dataViaje.origen_lng;
+      setUbicacionConductor({ lat: Number(latInicial), lng: Number(lngInicial) });
     };
 
     cargarViaje();
   }, []);
 
-  // 1. Reemplazamos la configuración del useEffect del canal GPS
+  // Suscripción al Canal Realtime (Broadcast + DB Fallback)
   useEffect(() => {
     if (!viajeId) return;
 
-    // Le decimos a Supabase explícitamente que este canal recibe Broadcasts
     const canalGps = supabase.channel(`gps_${viajeId}`, {
       config: { broadcast: { ack: false } }
     })
+      // 1. Escuchar Broadcast en tiempo real (instantáneo)
       .on('broadcast', { event: 'gps_mototaxi' }, (payload) => {
-        setUbicacionConductor({
-          lat: payload.payload.lat,
-          lng: payload.payload.lng
-        });
-        setUltimaSenial(new Date());
+        if (payload?.payload?.lat && payload?.payload?.lng) {
+          setUbicacionConductor({
+            lat: payload.payload.lat,
+            lng: payload.payload.lng
+          });
+          setUltimaSenial(new Date());
+        }
       })
-      .subscribe();
+      // 2. Escuchar cambios en la tabla 'viajes' (Fallback)
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'viajes', 
+        filter: `id=eq.${viajeId}` 
+      }, (payload) => {
+        if (payload.new.conductor_lat && payload.new.conductor_lng) {
+          setUbicacionConductor({
+            lat: Number(payload.new.conductor_lat),
+            lng: Number(payload.new.conductor_lng)
+          });
+          setUltimaSenial(new Date());
+        }
+        if (payload.new.estado === 'completado' || payload.new.estado === 'cancelado') {
+          setError('Este viaje ha finalizado.');
+        }
+      })
+      .subscribe((status) => {
+        console.log("📡 Tracker conectado al canal:", status);
+      });
 
     return () => {
       supabase.removeChannel(canalGps);
@@ -128,11 +153,10 @@ export default function App() {
   return (
     <div className="relative h-screen w-full bg-[#0a0a0a] flex flex-col font-sans overflow-hidden">
       
-      {/*PANEL REDISEÑADO: Posicionado Arriba, más delgado y compacto */}
+      {/* Panel Superior */}
       <div className="absolute top-4 left-4 right-4 md:left-6 md:right-auto md:w-[320px] z-[1000] pointer-events-none transition-all duration-300">
         <div className="bg-[#111111]/95 backdrop-blur-xl border border-gray-800/80 rounded-xl p-3 shadow-2xl pointer-events-auto">
           
-          {/* Cabecera */}
           <div className="flex justify-between items-center mb-2.5">
             <h1 className="text-lg font-black text-white tracking-tight">
               Tori<span className="bg-red-600 text-white px-1 rounded ml-0.5">Go!</span>
@@ -150,7 +174,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Caja Compacta del Conductor */}
           <div className="flex justify-between items-center bg-[#1a1a1c] p-2 rounded-lg border border-gray-800/60 mb-2.5">
             <div className="flex flex-col">
               <span className="text-gray-500 text-[8px] uppercase font-bold tracking-widest mb-0.5">Conductor</span>
@@ -167,7 +190,6 @@ export default function App() {
             )}
           </div>
 
-          {/* Rutas Minimalistas */}
           <div className="pl-1 space-y-1.5">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]"></div>
@@ -182,7 +204,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Mapa de Fondo */}
+      {/* Mapa */}
       <div className="flex-1 w-full z-0">
         <MapContainer 
           center={[ubicacionConductor.lat, ubicacionConductor.lng]} 
@@ -195,11 +217,13 @@ export default function App() {
             attribution='&copy; OpenStreetMap'
           />
           <MapUpdater ubicacion={ubicacionConductor} />
+          
           <Marker position={[viaje.destino_lat, viaje.destino_lng]} icon={iconDestino}>
             <Popup className="font-bold">Destino Final</Popup>
           </Marker>
-          {/*KEY DINÁMICO: Obliga a React Leaflet a forzar la actualización visual del TukTuk */}
+
           <Marker 
+            key={`${ubicacionConductor.lat}-${ubicacionConductor.lng}`}
             position={[ubicacionConductor.lat, ubicacionConductor.lng]} 
             icon={iconMototaxi}
           >
