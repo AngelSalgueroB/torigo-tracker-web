@@ -1,3 +1,4 @@
+// src/App.tsx
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { createClient } from '@supabase/supabase-js';
@@ -92,11 +93,14 @@ export default function App() {
   useEffect(() => {
     if (!viajeId) return;
 
+    console.log(`🎧 RASTREADOR INICIADO - Escuchando canal: gps_${viajeId}`);
+
     const canalGps = supabase.channel(`gps_${viajeId}`, {
       config: { broadcast: { ack: false } }
     })
       // 1. Escuchar Broadcast en tiempo real (instantáneo)
       .on('broadcast', { event: 'gps_mototaxi' }, (payload) => {
+        console.log("🔥 LLEGÓ BROADCAST:", payload);
         if (payload?.payload?.lat && payload?.payload?.lng) {
           setUbicacionConductor({
             lat: payload.payload.lat,
@@ -112,6 +116,7 @@ export default function App() {
         table: 'viajes', 
         filter: `id=eq.${viajeId}` 
       }, (payload) => {
+        console.log("🗄️ LLEGÓ UPDATE DE BD (Viajes):", payload);
         if (payload.new.conductor_lat && payload.new.conductor_lng) {
           setUbicacionConductor({
             lat: Number(payload.new.conductor_lat),
@@ -124,7 +129,7 @@ export default function App() {
         }
       })
       .subscribe((status) => {
-        console.log("📡 Tracker conectado al canal:", status);
+        console.log("📡 Estado de conexión Realtime:", status);
       });
 
     return () => {
@@ -222,8 +227,8 @@ export default function App() {
             <Popup className="font-bold">Destino Final</Popup>
           </Marker>
 
+          {/*CORRECCIÓN: Se eliminó el "key" dinámico. Ahora el pin se moverá sin reiniciarse. */}
           <Marker 
-            key={`${ubicacionConductor.lat}-${ubicacionConductor.lng}`}
             position={[ubicacionConductor.lat, ubicacionConductor.lng]} 
             icon={iconMototaxi}
           >
